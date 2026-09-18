@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESAKIP — Live Operations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#05070c;
+    --panel:#0b1220;
+    --panel-2:#0e1626;
+    --line:rgba(140,165,220,0.14);
+    --line-bright:rgba(140,165,220,0.28);
+    --text:#e8edf7;
+    --muted:#8a99b8;
+    --muted-2:#5f6c88;
+    --cyan:#4cc9f0;
+    --violet:#8b7fff;
+    --red:#ff5c7a;
+    --green:#3ddc97;
+    --amber:#ffb74c;
+    --radius:16px;
+    --font-ui:'Space Grotesk', system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 700px at 15% -10%, rgba(76,201,240,0.10), transparent 60%),
+      radial-gradient(1000px 600px at 90% 10%, rgba(139,127,255,0.08), transparent 55%),
+      var(--void);
+    color:var(--text);
+    font-family:var(--font-ui);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+
+  #bg-canvas{
+    position:fixed; inset:0; z-index:0; opacity:0.5; pointer-events:none;
+  }
+
+  .wrap{
+    position:relative; z-index:1;
+    max-width:1360px; margin:0 auto;
+    padding:28px 28px 80px;
+  }
+
+  /* ---------- Topbar ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding-bottom:22px; margin-bottom:26px;
+    border-bottom:1px solid var(--line);
+    flex-wrap:wrap; gap:14px;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand-mark{
+    width:38px; height:38px; border-radius:10px;
+    background:linear-gradient(135deg, var(--cyan), var(--violet));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 0 24px rgba(76,201,240,0.45);
+    font-size:18px;
+  }
+  .brand-text h1{font-size:17px; margin:0; font-weight:600; letter-spacing:0.2px;}
+  .brand-text p{margin:2px 0 0; font-size:12.5px; color:var(--muted);}
+
+  .status-cluster{display:flex; align-items:center; gap:22px; flex-wrap:wrap;}
+  .status-pill{
+    display:flex; align-items:center; gap:8px;
+    font-size:12.5px; color:var(--muted);
+    padding:7px 12px; border:1px solid var(--line); border-radius:999px;
+    background:rgba(255,255,255,0.02);
+  }
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--green);
+    box-shadow:0 0 8px var(--green); animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+  .clock{font-family:var(--font-mono); font-size:12.5px; color:var(--muted);}
+
+  /* ---------- Grid ---------- */
+  .row{display:grid; gap:18px; margin-bottom:18px;}
+  .row-3{grid-template-columns: 1fr 1.6fr 1fr;}
+  .row-2{grid-template-columns: 1.4fr 1fr;}
+  @media (max-width:980px){
+    .row-3{grid-template-columns:1fr;}
+    .row-2{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:linear-gradient(180deg, var(--panel), var(--panel-2));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px;
+    position:relative;
+    overflow:hidden;
+    transform-style:preserve-3d;
+    transition:transform 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+    box-shadow:0 20px 40px -28px rgba(0,0,0,0.7);
+  }
+  .panel::before{
+    content:"";
+    position:absolute; inset:0;
+    background:linear-gradient(120deg, rgba(76,201,240,0.06), transparent 40%);
+    pointer-events:none;
+  }
+  .panel:hover{
+    border-color:var(--line-bright);
+    box-shadow:0 26px 60px -30px rgba(76,201,240,0.25);
+  }
+  .panel-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
+  .panel-title{font-size:13.5px; font-weight:600; color:var(--text); margin:0;}
+  .panel-sub{font-size:11.5px; color:var(--muted-2); margin-top:2px;}
+
+  /* ---------- Connector health ---------- */
+  .conn-list{display:flex; flex-direction:column; gap:10px;}
+  .conn-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 12px; border-radius:10px;
+    background:rgba(255,255,255,0.02);
+    border:1px solid var(--line);
+  }
+  .conn-name{display:flex; align-items:center; gap:10px; font-size:13px;}
+  .conn-icon{width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:13px; background:rgba(76,201,240,0.1);}
+  .conn-status{font-family:var(--font-mono); font-size:11px; padding:3px 8px; border-radius:6px;}
+  .status-up{color:var(--green); background:rgba(61,220,151,0.12);}
+  .status-slow{color:var(--amber); background:rgba(255,183,76,0.12);}
+  .status-down{color:var(--red); background:rgba(255,92,122,0.12);}
+
+  /* ---------- Pipeline (hero) ---------- */
+  .pipeline-wrap{min-height:340px; display:flex; flex-direction:column; justify-content:space-between;}
+  .pipeline-svg{width:100%; height:190px; display:block;}
+  .stage-labels{display:flex; justify-content:space-between; margin-top:6px; padding:0 4px;}
+  .stage-label{flex:1; text-align:center; font-size:11px; color:var(--muted); letter-spacing:0.2px;}
+  .stage-label b{display:block; color:var(--text); font-size:12.5px; font-weight:600; margin-bottom:1px;}
+  .current-query{
+    margin-top:16px; padding:12px 14px; border-radius:12px;
+    background:rgba(139,127,255,0.07); border:1px solid rgba(139,127,255,0.25);
+    font-size:12.5px; color:var(--text);
+    min-height:40px; display:flex; align-items:center; gap:10px;
+  }
+  .current-query .tag{
+    font-family:var(--font-mono); font-size:10.5px; color:var(--violet);
+    background:rgba(139,127,255,0.15); padding:2px 7px; border-radius:5px; flex-shrink:0;
+  }
+  .query-form{display:flex; gap:8px; margin-top:12px;}
+  .query-form input{
+    flex:1; background:rgba(255,255,255,0.03); border:1px solid var(--line);
+    border-radius:10px; padding:10px 12px; color:var(--text); font-family:var(--font-ui);
+    font-size:13px; outline:none;
+  }
+  .query-form input:focus{border-color:var(--cyan);}
+  .query-form button{
+    background:linear-gradient(135deg, var(--cyan), var(--violet));
+    border:none; border-radius:10px; padding:0 18px; color:#05070c; font-weight:600;
+    font-family:var(--font-ui); font-size:13px; cursor:pointer;
+  }
+  .query-form button:disabled{opacity:0.5; cursor:not-allowed;}
+  .conn-status.status-unknown{color:var(--muted-2); background:rgba(255,255,255,0.05);}
+
+  /* ---------- Confidence gauge ---------- */
+  .gauge-wrap{display:flex; flex-direction:column; align-items:center; gap:14px;}
+  .gauge-num{font-family:var(--font-mono); font-size:34px; font-weight:600; color:var(--green);}
+  .gauge-label{font-size:11.5px; color:var(--muted); text-align:center; margin-top:-10px;}
+  .mini-stats{display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; margin-top:6px;}
+  .mini-stat{text-align:center; padding:10px 6px; border-radius:10px; background:rgba(255,255,255,0.02); border:1px solid var(--line);}
+  .mini-stat .v{font-family:var(--font-mono); font-size:17px; font-weight:600;}
+  .mini-stat .l{font-size:10.5px; color:var(--muted-2); margin-top:2px;}
+
+  /* ---------- Query feed ---------- */
+  .feed{display:flex; flex-direction:column; gap:0; max-height:280px; overflow-y:auto;}
+  .feed::-webkit-scrollbar{width:6px;}
+  .feed::-webkit-scrollbar-thumb{background:var(--line-bright); border-radius:6px;}
+  .feed-row{
+    display:grid; grid-template-columns:1fr auto auto; gap:14px; align-items:center;
+    padding:12px 4px; border-bottom:1px solid var(--line);
+  }
+  .feed-row:last-child{border-bottom:none;}
+  .feed-q{font-size:13px;}
+  .feed-cites{font-size:11px; color:var(--muted-2); margin-top:3px;}
+  .conf-bar{width:80px; height:6px; border-radius:4px; background:rgba(255,255,255,0.06); overflow:hidden;}
+  .conf-fill{height:100%; border-radius:4px;}
+  .feed-time{font-family:var(--font-mono); font-size:11px; color:var(--muted-2); text-align:right; min-width:44px;}
+
+  /* ---------- Alerts ---------- */
+  .alert-row{
+    display:flex; gap:12px; padding:11px 4px; border-bottom:1px solid var(--line); align-items:flex-start;
+  }
+  .alert-row:last-child{border-bottom:none;}
+  .alert-icon{
+    width:26px; height:26px; border-radius:7px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:12px;
+    background:rgba(255,92,122,0.14); color:var(--red);
+  }
+  .alert-icon.warn{background:rgba(255,183,76,0.14); color:var(--amber);}
+  .alert-text{font-size:12.5px;}
+  .alert-text .k{color:var(--muted-2); font-family:var(--font-mono); font-size:10.5px; margin-top:2px; display:block;}
+
+  /* ---------- Knowledge gaps ---------- */
+  .gap-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:11px 4px; border-bottom:1px solid var(--line);
+  }
+  .gap-row:last-child{border-bottom:none;}
+  .gap-topic{font-size:12.5px;}
+  .gap-meta{font-size:11px; color:var(--muted-2);}
+  .gap-badge{font-family:var(--font-mono); font-size:10.5px; padding:3px 8px; border-radius:6px; background:rgba(255,183,76,0.12); color:var(--amber);}
+
+  /* ---------- Footer ---------- */
+  .foot{
+    margin-top:30px; padding-top:18px; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
+    font-size:11.5px; color:var(--muted-2);
+  }
+  .foot b{color:var(--muted);}
+
+  @media (prefers-reduced-motion: reduce){
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">🛡️</div>
+      <div class="brand-text">
+        <h1>ESAKIP</h1>
+        <p>Enterprise Secure Agentic Knowledge Intelligence Platform</p>
+      </div>
+    </div>
+    <div class="status-cluster">
+      <div class="status-pill"><span class="dot"></span> Pipeline live</div>
+      <div class="status-pill" id="qcount-pill">0 queries today</div>
+      <div class="clock" id="clock">--:--:--</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Connector health / Pipeline / Confidence -->
+  <div class="row row-3">
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="panel-title">Connector Health</p>
+          <p class="panel-sub">RBAC-scoped enterprise sources</p>
+        </div>
+      </div>
+      <div class="conn-list" id="conn-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="panel-title">Live Agent Pipeline</p>
+          <p class="panel-sub">LangGraph · plan → retrieve → verify</p>
+        </div>
+      </div>
+      <div class="pipeline-wrap">
+        <svg class="pipeline-svg" id="pipe-svg" viewBox="0 0 560 190"></svg>
+        <div class="stage-labels">
+          <div class="stage-label"><b>Plan</b>route sources</div>
+          <div class="stage-label"><b>Retrieve</b>RBAC filter</div>
+          <div class="stage-label"><b>Context</b>rank + budget</div>
+          <div class="stage-label"><b>Generate</b>draft answer</div>
+          <div class="stage-label"><b>Verify</b>ground + score</div>
+        </div>
+        <div class="current-query" id="current-query">
+          <span class="tag">idle</span> Ask ESAKIP something below to send a real query through the pipeline.
+        </div>
+        <form id="query-form" class="query-form">
+          <input id="query-input" type="text" placeholder="e.g. What's our onboarding policy?" autocomplete="off" />
+          <button type="submit">Ask</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="panel-title">Verification</p>
+          <p class="panel-sub">Hallucination reduction engine</p>
+        </div>
+      </div>
+      <div class="gauge-wrap">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="58" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="12"/>
+          <circle id="gauge-arc" cx="70" cy="70" r="58" fill="none" stroke="url(#gaugeGrad)" stroke-width="12"
+            stroke-linecap="round" stroke-dasharray="364" stroke-dashoffset="364" transform="rotate(-90 70 70)"/>
+          <defs>
+            <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#4cc9f0"/>
+              <stop offset="100%" stop-color="#3ddc97"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div style="margin-top:-96px; text-align:center; pointer-events:none;">
+          <div class="gauge-num" id="gauge-num">—</div>
+        </div>
+        <div style="height:40px;"></div>
+        <div class="gauge-label">Avg. confidence, last 20 queries</div>
+        <div class="mini-stats">
+          <div class="mini-stat"><div class="v" id="stat-grounded">—</div><div class="l">Fully grounded</div></div>
+          <div class="mini-stat"><div class="v" id="stat-flagged">—</div><div class="l">Flagged claims</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Row 2: Recent queries -->
+  <div class="row" style="grid-template-columns:1fr;">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="panel-title">Recent Queries</p>
+          <p class="panel-sub">Answer confidence and citation coverage per query</p>
+        </div>
+      </div>
+      <div class="feed" id="query-feed"></div>
+    </div>
+  </div>
+
+  <!-- Row 3: Alerts / Gaps -->
+  <div class="row row-2">
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="panel-title">Security &amp; RBAC Alerts</p>
+          <p class="panel-sub">Prompt-injection screens and permission denials</p>
+        </div>
+      </div>
+      <div id="alert-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="panel-title">Knowledge Gaps</p>
+          <p class="panel-sub">Low-confidence or zero-evidence topics</p>
+        </div>
+      </div>
+      <div id="gap-list"></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div><b>Stack —</b> LangGraph · LangChain · Qdrant · PostgreSQL · Redis · S3 · Nginx</div>
+    <div>Every number on this screen maps to a field in the query's Context Receipt.</div>
+  </div>
+
+</div>
+
+<script>
+/* ================= Background particle field ================= */
+(function(){
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, particles = [];
+  function resize(){
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const N = Math.min(70, Math.floor(w/22));
+  for(let i=0;i<N;i++){
+    particles.push({
+      x: Math.random()*w, y: Math.random()*h,
+      vx: (Math.random()-0.5)*0.15, vy: (Math.random()-0.5)*0.15,
+      r: Math.random()*1.4+0.4
+    });
+  }
+
+  function step(){
+    ctx.clearRect(0,0,w,h);
+    for(const p of particles){
+      p.x += p.vx; p.y += p.vy;
+      if(p.x<0||p.x>w) p.vx*=-1;
+      if(p.y<0||p.y>h) p.vy*=-1;
+    }
+    for(let i=0;i<particles.length;i++){
+      for(let j=i+1;j<particles.length;j++){
+        const a=particles[i], b=particles[j];
+        const d = Math.hypot(a.x-b.x, a.y-b.y);
+        if(d<130){
+          ctx.strokeStyle = `rgba(120,160,220,${0.10*(1-d/130)})`;
+          ctx.lineWidth=1;
+          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+        }
+      }
+    }
+    for(const p of particles){
+      ctx.beginPath();
+      ctx.fillStyle='rgba(150,190,240,0.5)';
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fill();
+    }
+    requestAnimationFrame(step);
+  }
+  step();
+})();
+
+/* ================= Clock ================= */
+function tickClock(){
+  const el = document.getElementById('clock');
+  el.textContent = new Date().toLocaleTimeString('en-US', {hour12:false});
+}
+setInterval(tickClock, 1000); tickClock();
+
+/* ================= API layer ================= */
+// Same-origin by default (dashboard is served by the FastAPI app itself at
+// "/"). Override window.ESAKIP_API_BASE before this script runs if you're
+// serving the dashboard from somewhere else than the backend.
+const API_BASE = window.ESAKIP_API_BASE || '';
+
+async function apiGet(path){
+  const res = await fetch(API_BASE + path);
+  if(!res.ok) throw new Error(`GET ${path} -> ${res.status}`);
+  return res.json();
+}
+async function apiPostQuery(question){
+  const res = await fetch(API_BASE + '/query', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({question})
+  });
+  if(!res.ok){
+    const detail = await res.json().catch(()=>({detail:res.statusText}));
+    throw new Error(detail.detail || `POST /query -> ${res.status}`);
+  }
+  return res.json();
+}
+
+/* ================= Connector health (real) ================= */
+const CONNECTOR_ICONS = {
+  local_files:'📁', sharepoint:'📗', confluence:'📘', jira:'🧩',
+  notion:'🗒️', sql:'🗄️', email:'✉️'
+};
+function connectorLabel(name){
+  return name.split('_').map(w => w[0].toUpperCase()+w.slice(1)).join(' ');
+}
+async function refreshConnectors(){
+  const list = document.getElementById('conn-list');
+  try{
+    const data = await apiGet('/dashboard/connectors');
+    const names = Object.keys(data);
+    if(names.length === 0){
+      list.innerHTML = `<div style="font-size:12px; color:var(--muted-2);">No connectors registered yet.</div>`;
+      return;
+    }
+    list.innerHTML = names.map(name => {
+      const info = data[name];
+      const healthy = info.healthy;
+      const statusClass = healthy ? 'status-up' : 'status-down';
+      const statusText = healthy ? 'ONLINE' : 'OFFLINE';
+      const errNote = info.last_error ? `<div class="gap-meta" style="margin-top:2px;">${info.last_error.slice(0,60)}</div>` : '';
+      return `
+        <div class="conn-row">
+          <div class="conn-name"><span class="conn-icon">${CONNECTOR_ICONS[name] || '🔌'}</span>${connectorLabel(name)}</div>
+          <div class="conn-status ${statusClass}">${statusText}</div>
+        </div>
+        ${errNote}
+      `;
+    }).join('');
+  } catch(err){
+    list.innerHTML = `<div style="font-size:12px; color:var(--red);">Can't reach backend: ${err.message}</div>`;
+  }
+}
+refreshConnectors();
+setInterval(refreshConnectors, 8000);
+
+/* ================= Pipeline SVG ================= */
+const svgNS = 'http://www.w3.org/2000/svg';
+const pipeSvg = document.getElementById('pipe-svg');
+const stageX = [40, 165, 290, 415, 520];
+const stageY = 95;
+const stageColors = ['#4cc9f0','#4cc9f0','#8b7fff','#8b7fff','#3ddc97'];
+
+function buildPipelineBase(){
+  // connecting lines
+  for(let i=0;i<stageX.length-1;i++){
+    const line = document.createElementNS(svgNS,'line');
+    line.setAttribute('x1', stageX[i]+16); line.setAttribute('y1', stageY);
+    line.setAttribute('x2', stageX[i+1]-16); line.setAttribute('y2', stageY);
+    line.setAttribute('stroke', 'rgba(140,165,220,0.18)');
+    line.setAttribute('stroke-width','2');
+    pipeSvg.appendChild(line);
+  }
+  // nodes
+  stageX.forEach((x,i)=>{
+    const g = document.createElementNS(svgNS,'g');
+    const glow = document.createElementNS(svgNS,'circle');
+    glow.setAttribute('cx',x); glow.setAttribute('cy',stageY); glow.setAttribute('r',22);
+    glow.setAttribute('fill', stageColors[i]); glow.setAttribute('opacity','0.12');
+    g.appendChild(glow);
+    const core = document.createElementNS(svgNS,'circle');
+    core.setAttribute('cx',x); core.setAttribute('cy',stageY); core.setAttribute('r',13);
+    core.setAttribute('fill', '#0b1220');
+    core.setAttribute('stroke', stageColors[i]);
+    core.setAttribute('stroke-width','2');
+    core.setAttribute('id', `node-${i}`);
+    g.appendChild(core);
+    pipeSvg.appendChild(g);
+  });
+}
+buildPipelineBase();
+
+function firePacket(onDone, branch){
+  // branch: null = normal path to Verify; 'denied' = drops after Retrieve; 'gap' = drops after Verify
+  const packet = document.createElementNS(svgNS,'circle');
+  packet.setAttribute('r', 5);
+  packet.setAttribute('fill', '#e8edf7');
+  packet.style.filter = 'drop-shadow(0 0 6px rgba(255,255,255,0.9))';
+  pipeSvg.appendChild(packet);
+
+  let stopAt = branch === 'denied' ? 1 : stageX.length - 1;
+  let idx = 0;
+  const segDuration = 420;
+
+  function animateSeg(){
+    if(idx >= stopAt){
+      // pulse the final node, then handle branch drop
+      const node = document.getElementById(`node-${idx}`);
+      if(node){
+        node.setAttribute('r', 17);
+        setTimeout(()=> node.setAttribute('r', 13), 260);
+      }
+      if(branch === 'denied'){
+        dropPacket(packet, stageX[idx], stageY, '#ff5c7a', 150);
+      } else if(branch === 'gap'){
+        dropPacket(packet, stageX[idx], stageY, '#ffb74c', 150);
+      } else {
+        packet.remove();
+      }
+      if(onDone) onDone();
+      return;
+    }
+    const x0 = stageX[idx], x1 = stageX[idx+1];
+    const start = performance.now();
+    function frame(t){
+      const p = Math.min(1, (t-start)/segDuration);
+      packet.setAttribute('cx', x0 + (x1-x0)*p);
+      packet.setAttribute('cy', stageY + Math.sin(p*Math.PI) * -8);
+      if(p<1){ requestAnimationFrame(frame); }
+      else { idx++; animateSeg(); }
+    }
+    const node = document.getElementById(`node-${idx}`);
+    if(node){ node.setAttribute('r', 16); setTimeout(()=>node.setAttribute('r',13), 200); }
+    requestAnimationFrame(frame);
+  }
+  packet.setAttribute('cx', stageX[0]);
+  packet.setAttribute('cy', stageY);
+  animateSeg();
+}
+
+function dropPacket(packet, x, y, color, dist){
+  packet.setAttribute('fill', color);
+  const start = performance.now();
+  function frame(t){
+    const p = Math.min(1, (t-start)/500);
+    packet.setAttribute('cy', y + dist*p);
+    packet.setAttribute('opacity', 1-p);
+    if(p<1) requestAnimationFrame(frame);
+    else packet.remove();
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ================= Real query stream ================= */
+let queryCount = 0;
+let confHistory = [];
+const feedEl = document.getElementById('query-feed');
+const alertEl = document.getElementById('alert-list');
+const gapEl = document.getElementById('gap-list');
+const gapTopics = [];
+const alertLog = [];
+
+function confColor(c){
+  if(c >= 0.8) return 'var(--green)';
+  if(c >= 0.55) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function renderFeed(){
+  feedEl.innerHTML = confHistory.slice(0,8).map(item => `
+    <div class="feed-row">
+      <div>
+        <div class="feed-q">${item.q}</div>
+        <div class="feed-cites">${item.cites} citation${item.cites===1?'':'s'} · ${item.sources.join(', ')}</div>
+      </div>
+      <div class="conf-bar"><div class="conf-fill" style="width:${Math.round(item.conf*100)}%; background:${confColor(item.conf)};"></div></div>
+      <div class="feed-time">${item.time}</div>
+    </div>
+  `).join('');
+}
+
+function renderAlerts(){
+  if(alertLog.length === 0){
+    alertEl.innerHTML = `<div style="font-size:12.5px; color:var(--muted-2); padding:8px 4px;">No alerts yet — monitoring RBAC denials and injection screens live.</div>`;
+    return;
+  }
+  alertEl.innerHTML = alertLog.slice(0,6).map(a => `
+    <div class="alert-row">
+      <div class="alert-icon ${a.level==='warn'?'warn':''}">${a.level==='warn'?'⚠':'⛔'}</div>
+      <div class="alert-text">${a.text}<span class="k">${a.meta}</span></div>
+    </div>
+  `).join('');
+}
+
+function renderGaps(){
+  if(gapTopics.length === 0){
+    gapEl.innerHTML = `<div style="font-size:12.5px; color:var(--muted-2); padding:8px 4px;">No gaps detected yet.</div>`;
+    return;
+  }
+  gapEl.innerHTML = gapTopics.slice(0,6).map(g => `
+    <div class="gap-row">
+      <div>
+        <div class="gap-topic">${g.q}</div>
+        <div class="gap-meta">confidence ${g.conf.toFixed(2)} · ${g.cites} citation${g.cites===1?'':'s'}</div>
+      </div>
+      <div class="gap-badge">REVIEW</div>
+    </div>
+  `).join('');
+}
+
+function updateGauge(){
+  const recent = confHistory.slice(0,20).map(c=>c.conf);
+  if(recent.length === 0) return;
+  const avg = recent.reduce((a,b)=>a+b,0)/recent.length;
+  const grounded = recent.filter(c=>c>=0.8).length;
+  const flagged = recent.filter(c=>c<0.55).length;
+  document.getElementById('gauge-num').textContent = Math.round(avg*100) + '%';
+  document.getElementById('stat-grounded').textContent = grounded;
+  document.getElementById('stat-flagged').textContent = flagged;
+  const arc = document.getElementById('gauge-arc');
+  const circumference = 364;
+  arc.setAttribute('stroke-dashoffset', circumference - circumference*avg);
+}
+
+// Receipt ids already reflected in the feed, so polling doesn't duplicate
+// this client's own submissions or another client's concurrent queries.
+const seenReceipts = new Set();
+
+function ingestReceipt(receipt){
+  if(seenReceipts.has(receipt.receipt_id)) return;
+  seenReceipts.add(receipt.receipt_id);
+
+  queryCount++;
+  document.getElementById('qcount-pill').textContent = `${queryCount} queries seen`;
+
+  const time = new Date(receipt.timestamp).toLocaleTimeString('en-US',{hour12:false, hour:'2-digit', minute:'2-digit'});
+  const record = {
+    q: receipt.query,
+    sources: receipt.sources_queried,
+    conf: receipt.confidence,
+    cites: receipt.citations.length,
+    time
+  };
+  confHistory.unshift(record);
+  confHistory = confHistory.slice(0, 40);
+  renderFeed();
+  updateGauge();
+
+  if(receipt.sources_denied_by_rbac && receipt.sources_denied_by_rbac.length){
+    alertLog.unshift({
+      level:'block',
+      text:`RBAC denied ${receipt.sources_denied_by_rbac.join(', ')} for this principal`,
+      meta:`query: "${receipt.query.slice(0,44)}${receipt.query.length>44?'…':''}"`
+    });
+    renderAlerts();
+  }
+  if(receipt.confidence < 0.55){
+    gapTopics.unshift(record);
+    renderGaps();
+  }
+}
+
+async function pollReceipts(){
+  try{
+    const receipts = await apiGet('/receipts?limit=20');
+    // Oldest first so ingestReceipt's unshift ends up newest-first in the feed.
+    receipts.slice().reverse().forEach(ingestReceipt);
+  } catch(err){
+    // Backend not reachable yet — leave the panels showing their last state.
+  }
+}
+pollReceipts();
+setInterval(pollReceipts, 5000);
+
+/* ---- Submitting a real query through the form ---- */
+const form = document.getElementById('query-form');
+const input = document.getElementById('query-input');
+const submitBtn = form.querySelector('button');
+const currentQueryEl = document.getElementById('current-query');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const question = input.value.trim();
+  if(!question) return;
+
+  submitBtn.disabled = true;
+  currentQueryEl.innerHTML = `<span class="tag">running</span> ${question}`;
+
+  let packetDone = false;
+  let apiResult = null;
+  let apiError = null;
+
+  // Animate the pipeline while the real request is in flight; whichever
+  // finishes last decides how the packet branches (denied / gap / verified).
+  const animation = new Promise(resolve => firePacket(resolve, null));
+  const request = apiPostQuery(question)
+    .then(r => { apiResult = r; })
+    .catch(e => { apiError = e; });
+
+  await Promise.all([animation, request]);
+
+  if(apiError){
+    currentQueryEl.innerHTML =
+      `<span class="tag" style="color:var(--red); background:rgba(255,92,122,0.15);">error</span> ${apiError.message}`;
+  } else {
+    const denied = apiResult.denied_sources && apiResult.denied_sources.length;
+    const lowConf = apiResult.confidence < 0.55;
+    if(denied){
+      currentQueryEl.innerHTML =
+        `<span class="tag" style="color:var(--red); background:rgba(255,92,122,0.15);">blocked</span> ${apiResult.denied_sources.join(', ')} not permitted for this role.`;
+    } else if(lowConf){
+      currentQueryEl.innerHTML =
+        `<span class="tag" style="color:var(--amber); background:rgba(255,183,76,0.15);">low confidence</span> ${apiResult.answer}`;
+    } else {
+      currentQueryEl.innerHTML =
+        `<span class="tag" style="color:var(--green); background:rgba(61,220,151,0.15);">verified</span> ${apiResult.answer}`;
+    }
+    // Pull the freshly created receipt in immediately rather than waiting
+    // for the next poll cycle.
+    if(apiResult.receipt_id){
+      try{
+        const receipt = await apiGet(`/receipts/${apiResult.receipt_id}`);
+        ingestReceipt(receipt);
+      } catch(e){ /* will show up on next poll instead */ }
+    }
+  }
+
+  submitBtn.disabled = false;
+  input.value = '';
+  setTimeout(()=>{
+    currentQueryEl.innerHTML = `<span class="tag">idle</span> Ask ESAKIP something below to send a real query through the pipeline.`;
+  }, 4000);
+});
+
+/* ---- Knowledge gap panel: prefer the backend's own analytics ---- */
+async function refreshGapReport(){
+  try{
+    const report = await apiGet('/dashboard/knowledge-gaps');
+    if(report.total_queries === 0) return; // nothing to show yet
+    document.getElementById('gap-list').innerHTML = `
+      <div class="gap-row">
+        <div><div class="gap-topic">Low-confidence queries</div><div class="gap-meta">${report.low_confidence_queries.length} of ${report.total_queries} total</div></div>
+        <div class="gap-badge">${report.low_confidence_queries.length}</div>
+      </div>
+      <div class="gap-row">
+        <div><div class="gap-topic">Zero-evidence queries</div><div class="gap-meta">no retrieved chunks at all</div></div>
+        <div class="gap-badge">${report.zero_evidence_queries.length}</div>
+      </div>
+      ${report.frequently_denied_sources.map(([src, count]) => `
+        <div class="gap-row">
+          <div><div class="gap-topic">${connectorLabel(src)} denied by RBAC</div><div class="gap-meta">${count} time${count===1?'':'s'}</div></div>
+          <div class="gap-badge">RBAC</div>
+        </div>
+      `).join('')}
+    `;
+  } catch(err){ /* keep last rendered state */ }
+}
+setInterval(refreshGapReport, 8000);
+
+renderFeed(); renderAlerts(); renderGaps(); updateGauge();
+
+/* ================= Subtle 3D tilt on panels ================= */
+document.querySelectorAll('.panel').forEach(panel=>{
+  panel.addEventListener('mousemove', (e)=>{
+    const r = panel.getBoundingClientRect();
+    const px = (e.clientX - r.left)/r.width - 0.5;
+    const py = (e.clientY - r.top)/r.height - 0.5;
+    panel.style.transform = `perspective(900px) rotateX(${py*-4}deg) rotateY(${px*4}deg) translateZ(0)`;
+  });
+  panel.addEventListener('mouseleave', ()=>{
+    panel.style.transform = 'perspective(900px) rotateX(0) rotateY(0)';
+  });
+});
+</script>
+
+</body>
+</html>
