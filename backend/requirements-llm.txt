@@ -1,0 +1,5 @@
+# Optional: real LLM / embedding providers (set LLM_PROVIDER / EMBEDDING_PROVIDER)
+langchain-openai>=1.0
+langchain-anthropic>=1.0
+langchain-google-genai>=2.0
+tiktoken>=0.9  # optional: accurate token counting for OpenAI models (cost tracking)

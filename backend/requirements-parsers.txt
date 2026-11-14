@@ -1,0 +1,5 @@
+# Optional: OCR for scanned PDFs and PPTX parsing (Phase 4)
+# OCR also needs system packages: tesseract-ocr, poppler-utils (apt-get install tesseract-ocr poppler-utils)
+pytesseract>=0.3.13
+pdf2image>=1.17
+python-pptx>=1.0

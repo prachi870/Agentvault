@@ -1,0 +1,61 @@
+{
+  "family": "esakip-api",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/esakipECSExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/esakipECSTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "api",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/esakip-api:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "ENV", "value": "prod" },
+        { "name": "AUTO_CREATE_TABLES", "value": "false" },
+        { "name": "STORAGE_BACKEND", "value": "s3" },
+        { "name": "S3_BUCKET", "value": "esakip-documents-prod" },
+        { "name": "S3_REGION", "value": "REGION" },
+        { "name": "LLM_PROVIDER", "value": "gemini" },
+        { "name": "EMBEDDING_PROVIDER", "value": "gemini" },
+        { "name": "LOG_FORMAT", "value": "json" },
+        { "name": "AUDIT_LOG_ENABLED", "value": "true" },
+        { "name": "SCHEDULER_ENABLED", "value": "false" },
+        { "name": "HYBRID_RETRIEVAL_ENABLED", "value": "true" },
+        { "name": "INJECTION_CLASSIFIER_ENABLED", "value": "true" },
+        { "name": "CORS_ORIGINS", "value": "[\"https://your-domain.com\"]" }
+      ],
+      "secrets": [
+        { "name": "SECRET_KEY", "valueFrom": "SECRET_ARN_SECRET_KEY" },
+        { "name": "RECEIPT_SIGNING_KEY", "valueFrom": "SECRET_ARN_RECEIPT_SIGNING_KEY" },
+        { "name": "DATABASE_URL", "valueFrom": "SECRET_ARN_DATABASE_URL" },
+        { "name": "REDIS_URL", "valueFrom": "SECRET_ARN_REDIS_URL" },
+        { "name": "QDRANT_URL", "valueFrom": "SECRET_ARN_QDRANT_URL" },
+        { "name": "QDRANT_API_KEY", "valueFrom": "SECRET_ARN_QDRANT_API_KEY" },
+        { "name": "GOOGLE_API_KEY", "valueFrom": "SECRET_ARN_GOOGLE_API_KEY" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/esakip-api",
+          "awslogs-region": "REGION",
+          "awslogs-stream-prefix": "api"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}

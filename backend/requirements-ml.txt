@@ -1,0 +1,2 @@
+# Optional CPU-based reranking and NLI verification.
+sentence-transformers>=3.0

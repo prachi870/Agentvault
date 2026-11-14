@@ -1,0 +1,3 @@
+# Optional: enables the ML side of the injection-detection ensemble (app/services/injection_classifier.py).
+# Without it, injection detection still works via the regex heuristics alone.
+scikit-learn>=1.7
