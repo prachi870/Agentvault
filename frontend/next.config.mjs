@@ -1,9 +1,28 @@
 /** @type {import('next').NextConfig} */
+const rawApiProxyTarget = process.env.API_PROXY_TARGET?.trim();
+const apiProxyTarget = rawApiProxyTarget ? new URL(rawApiProxyTarget) : null;
+
+if (apiProxyTarget && (!['http:', 'https:'].includes(apiProxyTarget.protocol)
+  || apiProxyTarget.pathname !== '/' || apiProxyTarget.search || apiProxyTarget.hash)) {
+  throw new Error('API_PROXY_TARGET must be an HTTP(S) origin without a path, query, or fragment.');
+}
+
+if (process.env.VERCEL && !apiProxyTarget) {
+  throw new Error('Set API_PROXY_TARGET to the Render API origin in Vercel project settings.');
+}
+
 const nextConfig = {
   output: 'standalone',
   async rewrites() {
-    // In Docker/prod, nginx handles routing to the API.
-    // Rewrites only apply during local `npm run dev` without nginx.
+    if (apiProxyTarget) {
+      return [
+        {
+          source: '/api/:path*',
+          destination: `${apiProxyTarget.origin}/api/:path*`,
+        },
+      ];
+    }
+
     if (process.env.NODE_ENV === 'production') return [];
     return [
       {

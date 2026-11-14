@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     # --- Models ---
     embedding_provider: Literal["hash", "openai", "gemini"] = "hash"
-    embedding_model: str = "text-embedding-3-small"
+    embedding_model: str = ""
     hash_embedding_dim: int = 1024
     llm_provider: Literal["local", "openai", "anthropic", "gemini", "ollama"] = "local"
     llm_model: str = ""

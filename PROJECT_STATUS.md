@@ -1,8 +1,9 @@
 # ESAKIP Project Status Report
 
-> Historical snapshot dated 2026-09-28; the phase estimates and test counts below are not current.
+> Historical snapshot dated 2026-09-28; its AWS deployment proposal is superseded by the Vercel/Render
+> target. The phase estimates and test counts below are not current.
 > Current deployment prerequisites and release status are documented in [DEPLOYMENT.md](./DEPLOYMENT.md).
-> The latest local backend run passed 61 tests with 1 skipped; no AWS deployment has been verified.
+> No Vercel/Render deployment has been verified; the current release checklist is in [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 **Report Date**: 2026-09-28  
 **Project**: Enterprise Secure Agentic Knowledge Intelligence Platform  
@@ -23,8 +24,8 @@ The core ESAKIP platform is fully functional with all essential features working
 - Comprehensive documentation (200+ pages)
 - 100% test pass rate (13/13 automated tests)
 
-**Current blockers**: AWS infrastructure and production secrets are not provisioned or verified;
-periodic scheduler deployment and production monitoring/alerting still need implementation.
+**Current blockers**: Render/Vercel services and production secrets are not provisioned or verified;
+Qdrant Cloud and S3-compatible object storage must also be configured.
 
 ---
 

@@ -73,12 +73,16 @@ class OpenAIEmbedder:
 
 class GeminiEmbedder:
     name = "gemini"
-    _DIMS = {"models/text-embedding-004": 768, "models/embedding-001": 768}
+    _DIMS = {
+        "models/gemini-embedding-001": 3072,
+        "models/text-embedding-004": 768,
+        "models/embedding-001": 768,
+    }
 
     def __init__(self, model: str) -> None:
         from langchain_google_genai import GoogleGenerativeAIEmbeddings  # optional dependency (requirements-llm.txt)
 
-        model = model if model.startswith("models/") else f"models/{model or 'text-embedding-004'}"
+        model = model if model.startswith("models/") else f"models/{model or 'gemini-embedding-001'}"
         self._client = GoogleGenerativeAIEmbeddings(model=model)
         self.dim = self._DIMS.get(model) or len(self._client.embed_query("dimension probe"))
 
@@ -111,9 +115,9 @@ class CachedEmbedder:
 
 def build_embedder(provider: str, model: str, hash_dim: int, cache: Cache) -> Embedder:
     if provider == "openai":
-        inner: Embedder = OpenAIEmbedder(model)
+        inner: Embedder = OpenAIEmbedder(model or "text-embedding-3-small")
     elif provider == "gemini":
-        inner = GeminiEmbedder(model)
+        inner = GeminiEmbedder(model or "gemini-embedding-001")
     else:
         inner = HashEmbedder(hash_dim)
     return CachedEmbedder(inner, cache)

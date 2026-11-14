@@ -12,8 +12,8 @@ enterprise sources, verifies evidence, enforces permissions, and answers with ci
 | Relational | **PostgreSQL** | Users, documents, connectors, receipts, knowledge gaps |
 | Cache / limits | **Redis** | Rate limiting, query-embedding cache |
 | Object store | **S3** (MinIO in dev) | Original files |
-| Edge | **Nginx** | TLS, request limits, proxy |
-| Dev / CI / Prod | **Docker Compose** / **GitHub Actions** / **AWS EC2 or ECS** | |
+| Edge | **Vercel** in production; **Nginx** in local Docker Compose | API rewrite, TLS, local reverse proxy |
+| Dev / CI / Prod | **Docker Compose** / **GitHub Actions** / **Vercel + Render** | |
 
 The overview's "Technology Stack" heading is empty in the file, so the above is inferred from the rest of the
 document. **Assumption to confirm:** API framework = **FastAPI**; frontend (not yet built) = React/Next.js.
@@ -74,8 +74,11 @@ LangGraph graph, planner, evidence grader, context builder, LLM adapters (offlin
 ### Phase 5 — Frontend ✅
 React/Next.js: chat with inline citations and confidence, receipt viewer, knowledge-gap and health dashboards, connector admin, document manager. Full Next.js App Router app in `frontend/` with premium dark-mode design, SSE streaming, Docker + Nginx integration.
 
-### Phase 6 — Production on AWS 🟡
-ECS Fargate task definitions, GitHub Actions CD pipeline (build → ECR → ECS deploy), production Nginx with TLS/CSP/WAF headers, AWS setup script (ECR, S3 SSE-KMS, Secrets Manager, ECS cluster, CloudWatch alarms), prod env template. **Remaining**: actual AWS resource provisioning, real credentials, DNS, ACM certificate — owner will handle.
+### Phase 6 — Production deployment 🟡
+The active deployment target is Vercel for the Next.js frontend and Render for the FastAPI API,
+worker, Postgres, and Key Value. The Render Blueprint and Vercel API proxy are maintained in
+`render.yaml` and `frontend/next.config.mjs`. **Remaining**: provision cloud services and secrets,
+connect the Git integrations, and verify a live deployment. See [DEPLOYMENT.md](../DEPLOYMENT.md).
 
 ### Phase 7 — Future scope ✅
 - ✅ **Multi-agent collaboration**: supervisor agent with complexity analysis, specialist sub-agents (research, synthesis, fact-check, comparison, temporal), configurable merge strategies (`rag/agents/supervisor.py`).

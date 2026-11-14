@@ -5,7 +5,7 @@ from app.rag.planner import heuristic_plan, keyword_rewrite
 from app.rag.types import ContextBlock
 from app.rag.verifier import verify_answer
 from app.services.chunker import Chunker
-from app.services.embeddings import HashEmbedder
+from app.services.embeddings import HashEmbedder, build_embedder
 from app.services.injection import neutralize_for_context, scan_text
 from app.services.llm import LocalExtractiveLLM
 from app.services.rbac import Principal, can_access
@@ -139,6 +139,22 @@ def _valid_prod_settings(**overrides):
 
 def test_prod_accepts_persistent_services_and_configured_model_provider():
     _valid_prod_settings().validate_for_prod()
+
+
+def test_gemini_embedding_uses_current_provider_default(monkeypatch):
+    from app.services import embeddings
+    from app.services.cache import MemoryCache
+
+    class FakeGeminiEmbedder:
+        def __init__(self, model):
+            self.name = "gemini"
+            self.dim = 4
+            self.model = model
+
+    monkeypatch.setattr(embeddings, "GeminiEmbedder", FakeGeminiEmbedder)
+    embedder = build_embedder("gemini", "", 1024, MemoryCache())
+
+    assert embedder.inner.model == "gemini-embedding-001"
 
 
 def test_prod_rejects_missing_persistent_services_and_model_keys():

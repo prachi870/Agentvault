@@ -607,7 +607,7 @@ npm run dev -- --debug
 ### Getting Help
 
 - Review error messages in logs
-- Check health endpoint: `/api/v1/health`
+- Check liveness and readiness endpoints: `/health` and `/ready`
 - Review documentation
 - Contact support team
 
@@ -616,13 +616,11 @@ npm run dev -- --debug
 ## Production Deployment
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for comprehensive deployment guide covering:
-- AWS deployment
-- Docker containerization
-- Kubernetes orchestration
-- CI/CD setup
+- Vercel frontend and Render API/worker
+- Render managed database and Key Value configuration
+- GitHub CI and platform auto-deploy configuration
 - Production security
-- Monitoring and alerts
-- Scaling strategies
+- Health checks and production smoke tests
 
 ### Quick Production Checklist
 

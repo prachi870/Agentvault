@@ -1,0 +1,115 @@
+envVarGroups:
+  - name: agentvault-runtime
+    envVars:
+      - key: ENV
+        value: prod
+      - key: SECRET_KEY
+        generateValue: true
+      - key: RECEIPT_SIGNING_KEY
+        generateValue: true
+      - key: AUTO_CREATE_TABLES
+        value: "false"
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: EMBEDDING_PROVIDER
+        value: gemini
+      - key: EMBEDDING_MODEL
+        value: gemini-embedding-001
+      - key: LOG_FORMAT
+        value: json
+      - key: AUDIT_LOG_ENABLED
+        value: "true"
+      - key: SCHEDULER_ENABLED
+        value: "false"
+
+services:
+  - type: web
+    name: agentvault-api
+    runtime: docker
+    region: ohio
+    plan: 0.5c-512mb
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    preDeployCommand: alembic -c alembic.ini upgrade head
+    healthCheckPath: /ready
+    autoDeployTrigger: checksPass
+    envVarGroups:
+      - agentvault-runtime
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: agentvault-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: agentvault-redis
+          property: connectionString
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+
+  - type: worker
+    name: agentvault-worker
+    runtime: docker
+    region: ohio
+    plan: 0.5c-512mb
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: python scripts/worker.py
+    autoDeployTrigger: checksPass
+    envVarGroups:
+      - agentvault-runtime
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: agentvault-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: agentvault-redis
+          property: connectionString
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+
+  - type: keyvalue
+    name: agentvault-redis
+    region: ohio
+    plan: 256mb
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+    persistenceMode: journal-snapshot
+
+databases:
+  - name: agentvault-postgres
+    databaseName: agentvault
+    user: agentvault
+    plan: 0.5c-1g
+    region: ohio
+    postgresMajorVersion: "16"
