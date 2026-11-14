@@ -6,7 +6,7 @@ from uuid import uuid4
 from sqlalchemy import select
 
 from app.db.base import utcnow
-from app.db.models import Document, DocumentRevision, ReceiptEvidence, User
+from app.db.models import Document, DocumentRevision, Receipt, ReceiptEvidence, User
 
 
 def _add_document_history(client, users):
@@ -47,6 +47,20 @@ def _add_document_history(client, users):
         )
         db.add_all([internal, confidential])
         db.flush()
+        receipt_id = uuid4().hex
+        evidence_created_at = now - timedelta(days=2)
+        db.add(
+            Receipt(
+                id=receipt_id,
+                user_id=admin.id,
+                query="What changed in the leave policy?",
+                status="answered",
+                payload={},
+                signature="a" * 64,
+                created_at=evidence_created_at,
+            )
+        )
+        db.flush()
         db.add_all([
             DocumentRevision(
                 document_id=internal.id,
@@ -79,9 +93,9 @@ def _add_document_history(client, users):
                 created_at=now,
             ),
             ReceiptEvidence(
-                receipt_id=uuid4().hex,
+                receipt_id=receipt_id,
                 document_id=internal.id,
-                created_at=now - timedelta(days=2),
+                created_at=evidence_created_at,
             ),
         ])
         db.commit()
