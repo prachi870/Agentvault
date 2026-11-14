@@ -49,7 +49,7 @@ export default function EvidenceChangesPage() {
         <div>
           <span className="radar-eyebrow">KNOWLEDGE HEALTH · CHANGE RADAR</span>
           <h1>Answers that may need a second look</h1>
-          <p>When synced source content changes, ESAKIP compares its revision history with past cited evidence. Review those answers against the latest source.</p>
+          <p>When synced source content changes, AgentVault compares its revision history with past cited evidence. Review those answers against the latest source.</p>
         </div>
         <div className="radar-metrics">
           <div><strong>{loading ? '—' : changes.length}</strong><span>source changes</span></div>
