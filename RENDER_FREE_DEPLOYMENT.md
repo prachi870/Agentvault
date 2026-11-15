@@ -1,19 +1,20 @@
 # Free-tier demo deployment
 
-This setup runs the AgentVault API and PostgreSQL on Render's free plans, and the Next.js frontend
-on Vercel's free plan. It is for demos and portfolio use, not production or sensitive data.
+This setup runs the AgentVault API on Render's free plan, uses Supabase PostgreSQL as an external
+database, and hosts the Next.js frontend on Vercel's free plan. It is for demos and portfolio use,
+not production or sensitive data.
 
 ## What is and is not free
 
-The Render Blueprint provisions one free API web service and one free PostgreSQL database. The
-frontend can be deployed on Vercel for free. Qdrant Cloud, an S3-compatible object store such as
-Cloudflare R2, and Google AI Studio are external services; check their current free quotas and terms
-before use. The application cannot preserve uploaded files on Render's ephemeral filesystem.
+The Render Blueprint provisions one free API web service. Supabase PostgreSQL, Qdrant Cloud, an
+S3-compatible object store such as Cloudflare R2, and Google AI Studio are external services; check
+their current free quotas and terms before use. The frontend can be deployed on Vercel for free.
+The application cannot preserve uploaded files on Render's ephemeral filesystem.
 
 Render's free API sleeps after 15 minutes without traffic, may take about a minute to wake, has
-512 MB RAM, and can restart. Free Render Postgres is limited to 1 GB and expires after 30 days; after
-a further 14-day recovery window, Render deletes it. Free Postgres has no backups. Render's free
-Key Value also loses its data on restart, so this setup does not use it.
+512 MB RAM, and can restart. Supabase plan limits, pausing behavior, and backups are governed by
+Supabase; review its current terms. Render's free Key Value loses its data on restart, so this setup
+does not use it.
 
 The API uses in-process caching and runs queued connector/reindex jobs inline. This is suitable only
 for a small demo: long syncs or large reindexes can time out. There is no separate free Render worker
@@ -23,20 +24,26 @@ plan. The app still needs a secured Qdrant Cloud cluster and durable S3-compatib
 
 1. Push the repository to GitHub and connect it to Render.
 2. Select **New > Blueprint**, choose the repository and the `release-readiness` branch, and review
-   `render.yaml`. It creates `agentvault-api-free` and `agentvault-postgres-free`, both on Render's
-   free plan.
+   `render.yaml`. It creates the `agentvault-api-free` web service; it does not create a Render
+   database.
 3. During Blueprint setup, provide the following for `agentvault-api-free`:
+   - `DATABASE_URL` from Supabase. Use the **Session pooler** connection string for Render and
+     require TLS with `sslmode=require`. The direct database host may not be reachable from Render.
+     URL-encode special characters in the database password.
    - `QDRANT_URL` and `QDRANT_API_KEY` from Qdrant Cloud.
    - `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, and
      `AWS_SECRET_ACCESS_KEY` from your S3-compatible provider.
    - `GOOGLE_API_KEY` from Google AI Studio.
 4. For Cloudflare R2, use `S3_REGION=auto` and an endpoint such as
    `https://<account-id>.r2.cloudflarestorage.com`. For AWS S3, set the region and bucket; leave
-   `S3_ENDPOINT_URL` empty.
+   `S3_ENDPOINT_URL` empty. The AWS access key must allow `s3:ListBucket` on the bucket and
+   `s3:PutObject`, `s3:GetObject`, and `s3:DeleteObject` on its objects. For other S3-compatible
+   providers, set their documented S3 endpoint.
 5. Render generates strong values for `SECRET_KEY` and `RECEIPT_SIGNING_KEY`. Keep these values
    private and stable.
-6. The Blueprint uses `/health` as Render's liveness check and runs Alembic migrations in the API's
-   start command. This avoids Render's paid-only pre-deploy migration feature.
+6. The image's startup script runs Alembic migrations before starting the API. Leave Render's
+   **Docker Command** override blank so it uses the command in `backend/Dockerfile`. The Blueprint
+   uses `/health` as Render's liveness check; this avoids the paid-only pre-deploy command feature.
 7. Wait for the API deploy to finish. Open `https://<render-api-host>/health`; it should return
    `{"status":"ok"}`. Then open `/ready`; all dependency checks must be `true` before using the app.
 
@@ -47,25 +54,22 @@ changing the Render health path as a fix for a failing `/ready` dependency.
 
 ### If you already created paid resources
 
-The free Blueprint uses separate `-free` resource names to avoid silently changing the existing
-services. Render does not automatically delete resources removed from a Blueprint. After confirming
-the new free API works, review the Render Dashboard and manually stop or remove any unused paid API,
-worker, Key Value, or database services. Do not remove a database until you have decided whether to
-keep or discard its data.
+Render does not automatically delete resources removed from a Blueprint. After confirming the free
+API works, review the Render Dashboard and stop or remove any unused paid API, worker, Key Value, or
+database services. Do not remove a database until you have decided whether to keep or discard its
+data.
 
 ### For a manually created Render web service
 
 If you prefer to reuse the service shown in your Render Dashboard instead of creating the Blueprint,
 set its instance type to **Free**, use the `backend` directory as its root/build context and
-`Dockerfile` as its Dockerfile, then set the Docker command to:
+`Dockerfile` as its Dockerfile. Leave the **Docker Command** override blank so the image runs its
+startup script, which applies Alembic migrations before starting the API. If a command override is
+already set, clear it and save the service settings.
 
-```sh
-sh -c 'alembic -c alembic.ini upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000} --proxy-headers --forwarded-allow-ips="*"'
-```
-
-Set its health check path to `/health`. Set `FREE_TIER_MODE=true`, configure the database and
-external-service variables listed above, and do not set `REDIS_URL` unless you also deploy and
-operate a worker that consumes the queue.
+Set its health check path to `/health`. Set `FREE_TIER_MODE=true`, configure `DATABASE_URL` using
+the Supabase guidance above, and configure the external-service variables listed above. Do not set
+`REDIS_URL` unless you also deploy and operate a worker that consumes the queue.
 
 ## Deploy the frontend on Vercel
 
