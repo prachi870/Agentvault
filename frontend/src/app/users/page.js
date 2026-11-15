@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRequireAuth } from '@/lib/auth';
-import { listUsers, simulateUserAccessImpact, updateUser } from '@/lib/api';
+import { createUser, listUsers, simulateUserAccessImpact, updateUser } from '@/lib/api';
 
 const ROLES = ['viewer', 'employee', 'manager', 'admin'];
 const CLEARANCE_LEVELS = {
@@ -24,6 +24,17 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState(null);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [newUser, setNewUser] = useState({
+    full_name: '',
+    email: '',
+    password: '',
+    role: 'employee',
+    department: '',
+    clearance: CLEARANCE_LEVELS.employee,
+  });
   const [accessImpact, setAccessImpact] = useState(null);
   const [impactLoading, setImpactLoading] = useState(false);
   const [impactError, setImpactError] = useState('');
@@ -131,6 +142,59 @@ export default function UsersPage() {
       setSaving(false);
     }
   };
+
+  const beginCreate = () => {
+    setNewUser({
+      full_name: '',
+      email: '',
+      password: '',
+      role: 'employee',
+      department: '',
+      clearance: CLEARANCE_LEVELS.employee,
+    });
+    setCreateError('');
+    setError('');
+    setNotice('');
+    setShowCreateForm(true);
+  };
+
+  const closeCreate = () => {
+    setShowCreateForm(false);
+    setCreateError('');
+    setNewUser({
+      full_name: '',
+      email: '',
+      password: '',
+      role: 'employee',
+      department: '',
+      clearance: CLEARANCE_LEVELS.employee,
+    });
+  };
+
+  const saveNewUser = async (event) => {
+    event.preventDefault();
+    setCreating(true);
+    setCreateError('');
+    setError('');
+    setNotice('');
+    try {
+      const created = await createUser({
+        ...newUser,
+        full_name: newUser.full_name.trim(),
+        email: newUser.email.trim().toLowerCase(),
+        department: newUser.department.trim(),
+        clearance: Number(newUser.clearance),
+      });
+      setUsers((current) => [created, ...current]);
+      closeCreate();
+      setNotice(`Account created for ${created.email}.`);
+    } catch (err) {
+      setCreateError(err.message || 'Could not create this account.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const impactReady = Boolean(
     accessImpact &&
     !impactLoading &&
@@ -242,6 +306,7 @@ export default function UsersPage() {
         </div>
         <div className="header-right">
           <span className="user-count"><strong>{users.length}</strong> accounts</span>
+          <button type="button" className="btn btn-primary" onClick={beginCreate}>+ Create account</button>
         </div>
       </div>
 
@@ -370,6 +435,65 @@ export default function UsersPage() {
           </table>
         )}
       </div>
+
+      {showCreateForm && (
+        <div className="modal-overlay" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !creating) closeCreate();
+        }}>
+          <form className="modal-content access-editor" onSubmit={saveNewUser} aria-labelledby="create-user-title">
+            <div className="modal-header">
+              <div>
+                <span className="summary-label">NEW ACCOUNT</span>
+                <h2 id="create-user-title">Create an account</h2>
+                <p>Choose the account role and set its initial password.</p>
+              </div>
+              <button type="button" className="modal-close" onClick={closeCreate} aria-label="Close create account form" disabled={creating}>×</button>
+            </div>
+            <div className="access-fields">
+              <div className="input-group">
+                <label htmlFor="create-user-name">Full name</label>
+                <input id="create-user-name" className="input" maxLength={255} value={newUser.full_name} onChange={(event) => setNewUser((current) => ({ ...current, full_name: event.target.value }))} autoComplete="name" />
+              </div>
+              <div className="input-group">
+                <label htmlFor="create-user-email">Email</label>
+                <input id="create-user-email" className="input" type="email" maxLength={255} required value={newUser.email} onChange={(event) => setNewUser((current) => ({ ...current, email: event.target.value }))} autoComplete="email" />
+              </div>
+              <div className="input-group access-wide">
+                <label htmlFor="create-user-password">Initial password</label>
+                <input id="create-user-password" className="input" type="password" minLength={8} maxLength={128} required value={newUser.password} onChange={(event) => setNewUser((current) => ({ ...current, password: event.target.value }))} autoComplete="new-password" />
+                <small className="field-note">Use at least 8 characters and share it with the account owner securely.</small>
+              </div>
+              <div className="input-group">
+                <label htmlFor="create-user-role">Role</label>
+                <select id="create-user-role" className="select" value={newUser.role} onChange={(event) => {
+                  const role = event.target.value;
+                  setNewUser((current) => ({ ...current, role, clearance: CLEARANCE_LEVELS[role] }));
+                }}>
+                  {ROLES.map((role) => <option key={role} value={role}>{role[0].toUpperCase() + role.slice(1)}</option>)}
+                </select>
+              </div>
+              <div className="input-group">
+                <label htmlFor="create-user-clearance">Document clearance</label>
+                <select id="create-user-clearance" className="select" value={newUser.clearance} onChange={(event) => setNewUser((current) => ({ ...current, clearance: Number(event.target.value) }))}>
+                  <option value={0}>0 · Public</option>
+                  <option value={1}>1 · Internal</option>
+                  <option value={2}>2 · Confidential</option>
+                  <option value={3}>3 · Restricted</option>
+                </select>
+              </div>
+              <div className="input-group access-wide">
+                <label htmlFor="create-user-department">Department</label>
+                <input id="create-user-department" className="input" maxLength={64} value={newUser.department} onChange={(event) => setNewUser((current) => ({ ...current, department: event.target.value }))} placeholder="e.g. Research & Development" />
+              </div>
+            </div>
+            {createError && <p className="impact-state impact-error" role="alert">{createError}</p>}
+            <div className="modal-footer">
+              <button type="button" className="btn btn-ghost" onClick={closeCreate} disabled={creating}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={creating}>{creating ? 'Creating account…' : 'Create account'}</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {editingUser && draft && (
         <div className="modal-overlay" onMouseDown={(event) => {
@@ -510,6 +634,12 @@ export default function UsersPage() {
           justify-content: space-between;
           align-items: flex-start;
           margin-bottom: 32px;
+        }
+
+        .header-right {
+          display: flex;
+          align-items: center;
+          gap: 12px;
         }
 
         .page-header h1 {
@@ -885,6 +1015,8 @@ export default function UsersPage() {
           .people-summary { grid-template-columns: 1fr; }
           .filters-bar { flex-wrap: wrap; }
           .filters-bar > * { min-width: 100%; }
+          .page-header { flex-direction: column; gap: 16px; }
+          .header-right { width: 100%; justify-content: space-between; }
         }
         @media (max-width: 520px) {
           .access-fields { grid-template-columns: 1fr; }

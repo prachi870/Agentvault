@@ -318,6 +318,10 @@ export async function listUsers() {
   return authFetch('/users');
 }
 
+export async function createUser(body) {
+  return authFetch('/users', { method: 'POST', body: JSON.stringify(body) });
+}
+
 export async function getEvaluationCases() {
   return authFetch('/evaluation/cases');
 }

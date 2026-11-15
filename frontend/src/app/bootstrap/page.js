@@ -23,7 +23,12 @@ export default function BootstrapPage() {
         body: JSON.stringify({ email, password, full_name: fullName }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.detail || 'Bootstrap failed');
+      if (!res.ok) {
+        if (res.status === 409) {
+          throw new Error('Setup is already complete. Sign in with the existing administrator account, then use People & access to create another account. If you have lost access, recover the existing administrator through Supabase first.');
+        }
+        throw new Error(data?.detail || 'Bootstrap failed');
+      }
       setSuccess(true);
     } catch (err) {
       setError(err.message);
