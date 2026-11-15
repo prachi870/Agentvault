@@ -4,9 +4,9 @@
 
 This project can be tried on free tiers for a demo, with significant durability and availability
 limitations. The live API health and dependency checks currently pass, but `/ready` does not verify
-the application schema. Sign-in previously failed because the `users` table was missing; the
-migration-on-startup fix is prepared locally and must be deployed before sign-in can be verified.
-See [`RENDER_FREE_DEPLOYMENT.md`](./RENDER_FREE_DEPLOYMENT.md) for deployment steps.
+the application schema. The startup migration fix is deployed, and a nonexistent-account login now
+returns the expected unauthorized response rather than a database error. See
+[`RENDER_FREE_DEPLOYMENT.md`](./RENDER_FREE_DEPLOYMENT.md) for deployment steps.
 
 The root `docker-compose.yml` remains for local development. [`render.yaml`](./render.yaml) creates a
 free Render API for demos; Supabase provides PostgreSQL, and the Next.js frontend is hosted on Vercel
