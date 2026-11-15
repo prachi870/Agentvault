@@ -2,7 +2,7 @@
 
 Backend (FastAPI + LangGraph + LangChain + Qdrant + PostgreSQL + Redis + S3). See
 [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) for architecture, phases and known limitations.
-For the active Vercel + Render deployment setup, see [`DEPLOYMENT.md`](DEPLOYMENT.md).
+For the Vercel + Render free-tier demo setup, see [`RENDER_FREE_DEPLOYMENT.md`](RENDER_FREE_DEPLOYMENT.md).
 
 ## Quick start (no Docker, no API keys)
 

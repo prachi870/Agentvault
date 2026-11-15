@@ -141,6 +141,10 @@ def test_prod_accepts_persistent_services_and_configured_model_provider():
     _valid_prod_settings().validate_for_prod()
 
 
+def test_prod_free_tier_allows_in_process_cache_without_redis():
+    _valid_prod_settings(redis_url=None, free_tier_mode=True).validate_for_prod()
+
+
 def test_gemini_embedding_uses_current_provider_default(monkeypatch):
     from app.services import embeddings
     from app.services.cache import MemoryCache

@@ -1,8 +1,20 @@
-envVarGroups:
-  - name: agentvault-runtime
+services:
+  - type: web
+    name: agentvault-api-free
+    runtime: docker
+    region: ohio
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: >-
+      sh -c 'alembic -c alembic.ini upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000} --proxy-headers --forwarded-allow-ips="*"'
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
     envVars:
       - key: ENV
         value: prod
+      - key: FREE_TIER_MODE
+        value: "true"
       - key: SECRET_KEY
         generateValue: true
       - key: RECEIPT_SIGNING_KEY
@@ -23,29 +35,9 @@ envVarGroups:
         value: "true"
       - key: SCHEDULER_ENABLED
         value: "false"
-
-services:
-  - type: web
-    name: agentvault-api
-    runtime: docker
-    region: ohio
-    plan: 0.5c-512mb
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    preDeployCommand: alembic -c alembic.ini upgrade head
-    healthCheckPath: /ready
-    autoDeployTrigger: checksPass
-    envVarGroups:
-      - agentvault-runtime
-    envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: agentvault-postgres
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: agentvault-redis
+          name: agentvault-postgres-free
           property: connectionString
       - key: QDRANT_URL
         sync: false
@@ -55,41 +47,7 @@ services:
         sync: false
       - key: S3_REGION
         sync: false
-      - key: AWS_ACCESS_KEY_ID
-        sync: false
-      - key: AWS_SECRET_ACCESS_KEY
-        sync: false
-      - key: GOOGLE_API_KEY
-        sync: false
-
-  - type: worker
-    name: agentvault-worker
-    runtime: docker
-    region: ohio
-    plan: 0.5c-512mb
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    dockerCommand: python scripts/worker.py
-    autoDeployTrigger: checksPass
-    envVarGroups:
-      - agentvault-runtime
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: agentvault-postgres
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: agentvault-redis
-          property: connectionString
-      - key: QDRANT_URL
-        sync: false
-      - key: QDRANT_API_KEY
-        sync: false
-      - key: S3_BUCKET
-        sync: false
-      - key: S3_REGION
+      - key: S3_ENDPOINT_URL
         sync: false
       - key: AWS_ACCESS_KEY_ID
         sync: false
@@ -97,19 +55,11 @@ services:
         sync: false
       - key: GOOGLE_API_KEY
         sync: false
-
-  - type: keyvalue
-    name: agentvault-redis
-    region: ohio
-    plan: 256mb
-    ipAllowList: []
-    maxmemoryPolicy: noeviction
-    persistenceMode: journal-snapshot
 
 databases:
-  - name: agentvault-postgres
+  - name: agentvault-postgres-free
     databaseName: agentvault
     user: agentvault
-    plan: 0.5c-1g
+    plan: free
     region: ohio
     postgresMajorVersion: "16"

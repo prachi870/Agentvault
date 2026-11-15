@@ -7,5 +7,6 @@
 4. Restart the backend after changing the environment.
 
 Never paste API keys into source files, documentation, screenshots, or commits. For production,
-set `GOOGLE_API_KEY` as a secret environment variable on both Render services (`agentvault-api` and
-`agentvault-worker`). Rotate any key that was previously copied into a tracked or shared file.
+set `GOOGLE_API_KEY` as a secret environment variable on the Render API service. A free-tier setup
+does not deploy a separate worker. Rotate any key that was previously copied into a tracked or
+shared file.

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # --- App ---
     app_name: str = "Agentvault"
     env: Literal["dev", "test", "prod"] = "dev"
+    free_tier_mode: bool = False
     api_prefix: str = "/api/v1"
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000", "http://localhost:5173"])
     secret_key: str = _DEFAULT_SECRET
@@ -123,7 +124,7 @@ class Settings(BaseSettings):
                     "AUTO_CREATE_TABLES must be false in production (Phase 4) - run `alembic upgrade head` "
                     "as a release step instead; see backend/alembic/"
                 )
-            if not self.redis_url:
+            if not self.redis_url and not self.free_tier_mode:
                 raise RuntimeError("REDIS_URL must point to a shared Redis service in production")
             if not self.qdrant_url or not self.qdrant_api_key:
                 raise RuntimeError("QDRANT_URL and QDRANT_API_KEY must point to a secured Qdrant service in production")
